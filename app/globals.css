@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --xr-bg:           #0a0b10;       /* page background */
+  --xr-bg-elev-1:    #11121a;       /* cards elevation 1 */
+  --xr-bg-elev-2:    #161823;       /* nested elevation 2 */
+  --xr-border:       rgba(180, 124, 255, 0.08);
+  --xr-border-strong: rgba(180, 124, 255, 0.16);
+
+  /* Text */
+  --xr-text:         #E6E6EE;
+  --xr-text-dim:     #8A8A98;
+  --xr-text-faint:   #5A5A66;
+
+  /* Accents (Xorr identity — NOT amber) */
+  --xr-mint:         #7AF0C8;       /* primary stat color */
+  --xr-mint-dim:     #4FB596;
+  --xr-violet:       #B47CFF;       /* secondary highlight */
+  --xr-violet-dim:   #7E58B8;
+
+  /* Semantic */
+  --xr-win:          #4ADE80;
+  --xr-loss:         #F87171;
+  --xr-warn:         #FBBF24;
+  --xr-info:         #60A5FA;
+}
+
+@theme {
+  /* Theme overrides and custom classes for Tailwind v4 */
+  --color-xr-bg: var(--xr-bg);
+  --color-xr-bg-elev-1: var(--xr-bg-elev-1);
+  --color-xr-bg-elev-2: var(--xr-bg-elev-2);
+  --color-xr-border: var(--xr-border);
+  --color-xr-border-strong: var(--xr-border-strong);
+  
+  --color-xr-text: var(--xr-text);
+  --color-xr-text-dim: var(--xr-text-dim);
+  --color-xr-text-faint: var(--xr-text-faint);
+  
+  --color-xr-mint: var(--xr-mint);
+  --color-xr-mint-dim: var(--xr-mint-dim);
+  --color-xr-violet: var(--xr-violet);
+  --color-xr-violet-dim: var(--xr-violet-dim);
+  
+  --color-xr-win: var(--xr-win);
+  --color-xr-loss: var(--xr-loss);
+  --color-xr-warn: var(--xr-warn);
+  --color-xr-info: var(--xr-info);
+  
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--xr-bg);
+  color: var(--xr-text);
+  font-family: var(--font-sans);
+}
+
+/* Custom scrollbars for a clean terminal vibe */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--xr-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--xr-border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--xr-violet-dim);
+}
