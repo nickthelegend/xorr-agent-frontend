@@ -51,6 +51,7 @@ export default function Header({ connected, currentMode, onModeChange }: HeaderP
     { name: "Overview", path: "/" },
     { name: "Trades", path: "/trades" },
     { name: "Brain", path: "/brain" },
+    { name: "Backtest", path: "/backtest" },
     { name: "Wallet", path: "/wallet" },
     { name: "Settings", path: "/settings" },
   ];

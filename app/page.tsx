@@ -9,13 +9,16 @@ import Button from "../components/ui/Button";
 import EquityCurve from "../components/overview/EquityCurve";
 import FearGreedGauge from "../components/overview/FearGreedGauge";
 import { xorrApi } from "../lib/api";
-import { OverviewResponse } from "../lib/types";
+import { OverviewResponse, Trade } from "../lib/types";
 import { formatMoney, formatPercent } from "../lib/format";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownLeft, RefreshCw } from "lucide-react";
+import clsx from "clsx";
 
 export default function OverviewPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [councilHealth, setCouncilHealth] = useState<{ primary: number; verifier: number; fast: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,8 +26,21 @@ export default function OverviewPage() {
   const loadOverview = async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setRefreshing(true);
     try {
-      const res = await xorrApi.getOverview();
-      setData(res);
+      const [overviewRes, tradesRes, healthRes] = await Promise.all([
+        xorrApi.getOverview(),
+        xorrApi.getTrades("all").catch(e => {
+          console.error("Trades fetch failed", e);
+          return [] as Trade[];
+        }),
+        xorrApi.getCouncilHealth().catch(e => {
+          console.error("Council health fetch failed", e);
+          return null;
+        })
+      ]);
+      
+      setData(overviewRes);
+      setTrades(tradesRes);
+      setCouncilHealth(healthRes);
       setError(null);
     } catch (err: any) {
       setError(err.message || "Failed to load overview data.");
@@ -80,6 +96,16 @@ export default function OverviewPage() {
 
   const pnlIsPositive = data.pnl.totalUsd >= 0;
   const returnIsPositive = data.portfolio.totalReturnPct >= 0;
+
+  // Calculate today's stats (UTC today)
+  const now = new Date();
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayTrades = trades.filter(t => {
+    const openTime = new Date(t.openedAt);
+    return openTime >= todayStart;
+  });
+  const todayCount = todayTrades.length;
+  const todayPnL = todayTrades.reduce((acc, t) => acc + (t.pnlUsd || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -152,7 +178,94 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      {/* Row 2: Equity Chart + Fear & Greed */}
+      {/* Row 2: Secondary KPIs & Council Health */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Sim/Live Indicator */}
+        <Card className="flex items-center justify-between p-4 min-h-[72px]">
+          <div className="flex flex-col">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-xr-text-faint">ENGINE MODE</span>
+            <span className={clsx(
+              "font-mono text-xs font-bold mt-1 uppercase",
+              data.mode === "live" ? "text-xr-loss animate-pulse" : "text-xr-mint"
+            )}>
+              {data.mode === "live" ? "🔴 LIVE TRADING" : "🟢 SIMULATION"}
+            </span>
+          </div>
+        </Card>
+
+        {/* Today's Trade Count */}
+        <Card className="flex items-center justify-between p-4 min-h-[72px]">
+          <div className="flex flex-col">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-xr-text-faint">TODAY'S TRADES</span>
+            <span className="font-mono text-xs font-semibold text-xr-text mt-1">
+              {todayCount} {todayCount === 1 ? "trade" : "trades"}
+            </span>
+          </div>
+        </Card>
+
+        {/* Today's PnL */}
+        <Card className="flex items-center justify-between p-4 min-h-[72px]">
+          <div className="flex flex-col">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-xr-text-faint">TODAY'S PNL</span>
+            <span className={clsx(
+              "font-mono text-xs font-semibold mt-1",
+              todayPnL > 0 ? "text-xr-win" : todayPnL < 0 ? "text-xr-loss" : "text-xr-text-dim"
+            )}>
+              {todayPnL > 0 ? "+" : ""}{formatMoney(todayPnL)}
+            </span>
+          </div>
+        </Card>
+
+        {/* Council Health Card */}
+        <Card className="flex flex-col justify-center p-4 min-h-[72px]">
+          <span className="font-mono text-[9px] uppercase tracking-wider text-xr-text-faint mb-1.5">COUNCIL HEALTH (Last 50)</span>
+          <div className="flex items-center justify-between">
+            {/* Primary */}
+            <div className="flex items-center space-x-1.5">
+              <span className={clsx(
+                "h-2 w-2 rounded-full",
+                councilHealth ? (councilHealth.primary > 0.85 ? "bg-xr-mint" : councilHealth.primary > 0.5 ? "bg-xr-warn" : "bg-xr-loss") : "bg-xr-text-faint"
+              )} />
+              <div className="flex flex-col">
+                <span className="font-mono text-[8px] text-xr-text-dim leading-none">PRI</span>
+                <span className="font-mono text-[10px] font-semibold text-xr-text mt-0.5">
+                  {councilHealth ? `${Math.round(councilHealth.primary * 100)}%` : "N/A"}
+                </span>
+              </div>
+            </div>
+
+            {/* Verifier */}
+            <div className="flex items-center space-x-1.5">
+              <span className={clsx(
+                "h-2 w-2 rounded-full",
+                councilHealth ? (councilHealth.verifier > 0.85 ? "bg-xr-mint" : councilHealth.verifier > 0.5 ? "bg-xr-warn" : "bg-xr-loss") : "bg-xr-text-faint"
+              )} />
+              <div className="flex flex-col">
+                <span className="font-mono text-[8px] text-xr-text-dim leading-none">VER</span>
+                <span className="font-mono text-[10px] font-semibold text-xr-text mt-0.5">
+                  {councilHealth ? `${Math.round(councilHealth.verifier * 100)}%` : "N/A"}
+                </span>
+              </div>
+            </div>
+
+            {/* Fast */}
+            <div className="flex items-center space-x-1.5">
+              <span className={clsx(
+                "h-2 w-2 rounded-full",
+                councilHealth ? (councilHealth.fast > 0.85 ? "bg-xr-mint" : councilHealth.fast > 0.5 ? "bg-xr-warn" : "bg-xr-loss") : "bg-xr-text-faint"
+              )} />
+              <div className="flex flex-col">
+                <span className="font-mono text-[8px] text-xr-text-dim leading-none">FST</span>
+                <span className="font-mono text-[10px] font-semibold text-xr-text mt-0.5">
+                  {councilHealth ? `${Math.round(councilHealth.fast * 100)}%` : "N/A"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Row 3: Equity Chart + Fear & Greed */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Equity Curve Area Chart */}
         <Card className="lg:col-span-8 flex flex-col justify-between">

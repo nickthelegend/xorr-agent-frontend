@@ -71,6 +71,21 @@ export interface Trade {
   strategy: string;
 }
 
+export interface CouncilVote {
+  model: string;
+  score: number;
+  reasoning: string;
+  redFlags: string[];
+  latencyMs: number;
+}
+
+export interface CouncilDecision {
+  councilScore: number;
+  consensus: number;          // stddev
+  finalConfidence: number;
+  votes: CouncilVote[];
+}
+
 export interface DecisionLogEntry {
   id: string;
   t: string;                       // ISO
@@ -82,6 +97,9 @@ export interface DecisionLogEntry {
   brainScore: number;
   reasoning: string;               // markdown-safe text
   marketSnapshot: Record<string, number>;
+  council?: CouncilDecision;       // present for ENTER/SKIP, absent for HOLD/EXIT
+  confluence?: number;
+  confluenceBreakdown?: Record<string, number>;
 }
 
 export interface WalletResponse {
@@ -103,9 +121,21 @@ export interface SettingsPayload {
   killDrawdownPct: number;
   cexDeviationBps: number;
   liquidityImpactBps: number;
-  enableVedicFilter: boolean;
-  enableNewsCatalyst: boolean;
+  qualityMode: boolean;
+  confluenceThreshold: number;
+  councilMinFinalConfidence: number;
   groqModel: string;
+  groqCouncilPrimary: string;
+  groqCouncilVerifier: string;
+  groqCouncilFast: string;
+  enableStrategyMomentumPullback: boolean;
+  enableStrategyFibGoldenPocket: boolean;
+  enableStrategyCapitulation: boolean;
+  enableStrategyNewsCatalyst: boolean;
+  enableStrategyMeanReversion: boolean;
+  enableStrategyTrendFollow: boolean;
+  enableStrategyVolSqueeze: boolean;
+  enableStrategyWhaleFlow: boolean;
 }
 
 export interface LogEntry {

@@ -20,6 +20,7 @@ export default function BrainPage() {
   const [actionFilter, setActionFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
 
   const loadDecisions = async () => {
     try {
@@ -215,6 +216,128 @@ export default function BrainPage() {
                             ✗ {f}
                           </span>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Confluence Score and Breakdown */}
+                    {entry.confluence !== undefined && entry.confluence !== null && (
+                      <div className="space-y-1.5">
+                        <span className="font-mono text-[9px] text-xr-text-faint uppercase tracking-wider">
+                          CONFLUENCE SCORE ({entry.confluence.toFixed(0)}/100)
+                        </span>
+                        {entry.confluenceBreakdown && Object.keys(entry.confluenceBreakdown).length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(entry.confluenceBreakdown).map(([name, val]) => (
+                              <div key={name} className="flex items-center space-x-1.5 bg-xr-bg-elev-2/30 border border-xr-border/50 rounded px-2 py-0.5 font-mono text-[10px]">
+                                <span className="text-xr-text-dim uppercase">{name.replace(/_/g, " ")}:</span>
+                                <span className="text-xr-mint font-semibold">{val.toFixed(0)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* LLM Council Votes */}
+                    {entry.council && entry.council.votes && entry.council.votes.length > 0 && (
+                      <div className="space-y-3 border-t border-xr-border/30 pt-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-xr-bg-elev-2/45 border border-xr-border/80 rounded-md p-3">
+                          <div className="flex flex-wrap items-center gap-4">
+                            <span className="font-mono text-[10px] text-xr-text-faint uppercase tracking-wider">LLM COUNCIL DECISION</span>
+                            <div className="flex items-center space-x-1.5 font-mono text-xs">
+                              <span className="text-xr-text-dim">COUNCIL SCORE:</span>
+                              <span className="text-xr-mint font-bold">{(entry.council.councilScore * 100).toFixed(0)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1.5 font-mono text-xs">
+                              <span className="text-xr-text-dim">FINAL CONFIDENCE:</span>
+                              <span className="text-xr-violet font-bold">{(entry.council.finalConfidence * 100).toFixed(0)}%</span>
+                            </div>
+                          </div>
+                          
+                          {/* Consensus Gauge */}
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-[9px] text-xr-text-dim uppercase tracking-wider">
+                              CONSENSUS (stddev: {entry.council.consensus.toFixed(2)}):
+                            </span>
+                            <div className="w-24 bg-xr-bg border border-xr-border h-2 rounded-full overflow-hidden relative">
+                              <div
+                                className={clsx(
+                                  "h-full rounded-full transition-all duration-300",
+                                  entry.council.consensus < 0.15 ? "bg-xr-mint" : entry.council.consensus < 0.3 ? "bg-xr-warn" : "bg-xr-loss"
+                                )}
+                                style={{ width: `${Math.max(0, Math.min(100, (1 - entry.council.consensus) * 100))}%` }}
+                              />
+                            </div>
+                            <span className={clsx(
+                              "font-mono text-[9px] uppercase font-semibold",
+                              entry.council.consensus < 0.15 ? "text-xr-mint" : entry.council.consensus < 0.3 ? "text-xr-warn" : "text-xr-loss"
+                            )}>
+                              {entry.council.consensus < 0.15 ? "STRONG" : entry.council.consensus < 0.3 ? "MODERATE" : "WEAK"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Votes Grid/List */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {entry.council.votes.map((vote, idx) => {
+                            const isVoteExpanded = expandedVotes[`${entry.id}-${idx}`];
+                            return (
+                              <div key={idx} className="bg-xr-bg/40 border border-xr-border rounded-md p-3 flex flex-col justify-between space-y-2">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono text-xs font-semibold text-xr-text capitalize">{vote.model}</span>
+                                    <span className="font-mono text-[9px] text-xr-text-dim">{vote.latencyMs}ms</span>
+                                  </div>
+                                  
+                                  {/* Score Bar */}
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-mono text-[9px] text-xr-text-dim uppercase">SCORE</span>
+                                    <div className="flex-1 bg-xr-bg border border-xr-border h-1.5 rounded overflow-hidden">
+                                      <div
+                                        className="bg-xr-mint h-full"
+                                        style={{ width: `${vote.score * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-mono text-xs text-xr-mint font-semibold">{vote.score.toFixed(2)}</span>
+                                  </div>
+
+                                  {/* Red Flags if any */}
+                                  {vote.redFlags && vote.redFlags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                      {vote.redFlags.map((flag, fIdx) => (
+                                        <span key={fIdx} className="font-mono text-[8px] px-1 py-0.5 rounded bg-xr-loss/10 border border-xr-loss/30 text-xr-loss uppercase">
+                                          {flag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Collapsible Reasoning */}
+                                  <div 
+                                    className="font-mono text-[10px] text-xr-text-dim cursor-pointer bg-xr-bg-elev-2/45 border border-xr-border/40 hover:border-xr-border p-2 rounded transition-colors text-left"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedVotes(prev => ({
+                                        ...prev,
+                                        [`${entry.id}-${idx}`]: !prev[`${entry.id}-${idx}`]
+                                      }));
+                                    }}
+                                  >
+                                    <div className={clsx(
+                                      "transition-all duration-200 overflow-hidden leading-relaxed",
+                                      isVoteExpanded ? "line-clamp-none" : "line-clamp-2"
+                                    )}>
+                                      {vote.reasoning}
+                                    </div>
+                                    <div className="text-[8px] text-xr-text-faint mt-1 flex items-center justify-end">
+                                      {isVoteExpanded ? "Collapse" : "Expand"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 

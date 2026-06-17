@@ -72,9 +72,39 @@ export const xorrApi = {
       body: JSON.stringify({ mode }),
     }),
   triggerScan: () => request<{ success: boolean }>("/api/engine/scan", { method: "POST" }),
+  getRegistration: () =>
+    request<{ registered: boolean; tx: string | null; address: string | null; mode: Mode; contract: string }>(
+      "/api/engine/registration"
+    ),
+  registerCompetition: () =>
+    request<{ success: boolean; tx: string; simulated: boolean }>("/api/engine/register", { method: "POST" }),
   startEngine: (force: boolean = false) =>
     request<{ success: boolean; state: string }>(`/api/engine/start${force ? "?force=true" : ""}`, {
       method: "POST",
     }),
   stopEngine: () => request<{ success: boolean; state: string }>("/api/engine/stop", { method: "POST" }),
+  
+  // Backtest APIs
+  runBacktest: (windowDays: number, strategies: string[], qualityMode: boolean) =>
+    request<{ runId: string }>("/api/backtest/run", {
+      method: "POST",
+      body: JSON.stringify({ windowDays, strategies, qualityMode }),
+    }),
+  getBacktestRuns: () => request<any[]>("/api/backtest/runs"),
+  getBacktestReport: (runId: string) => request<any>(`/api/backtest/runs/${runId}`),
+  
+  // Learning APIs
+  getLearningStats: () => request<any>("/api/learning/stats"),
+  toggleStrategy: (name: string, enabled: boolean) =>
+    request<any>(`/api/settings/strategy/${name}`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
+    
+  // Council APIs
+  getCouncilHealth: () => request<{ primary: number; verifier: number; fast: number }>("/api/council/health"),
+  
+  // MCP APIs
+  getMcpSkills: () => request<any[]>("/api/mcp/skills"),
+  refreshMcpSkills: () => request<any>("/api/mcp/refresh", { method: "POST" }),
 };
