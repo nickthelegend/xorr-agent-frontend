@@ -8,11 +8,15 @@ import Button from "../../components/ui/Button";
 import { xorrApi } from "../../lib/api";
 import { WalletResponse } from "../../lib/types";
 import { formatMoney, formatAddress } from "../../lib/format";
-import { Copy, Check, QrCode, RefreshCw, AlertTriangle } from "lucide-react";
+import { Copy, Check, QrCode, RefreshCw, AlertTriangle, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import clsx from "clsx";
+
+type Readiness = Awaited<ReturnType<typeof xorrApi.getReadiness>>;
 
 export default function WalletPage() {
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [registering, setRegistering] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +28,7 @@ export default function WalletPage() {
     try {
       const res = force ? await xorrApi.refreshWallet() : await xorrApi.getWallet();
       setWallet(res);
+      xorrApi.getReadiness().then(setReadiness).catch(() => {});
       setError(null);
     } catch (err: any) {
       setError(err.message || "Failed to fetch wallet info.");
@@ -33,8 +38,22 @@ export default function WalletPage() {
     }
   };
 
+  const handleRegister = async () => {
+    setRegistering(true);
+    try {
+      await xorrApi.registerCompetition();
+      await loadWallet(true);
+    } catch (e) {
+      console.error("register failed", e);
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   useEffect(() => {
     loadWallet();
+    const id = setInterval(() => xorrApi.getReadiness().then(setReadiness).catch(() => {}), 15000);
+    return () => clearInterval(id);
   }, []);
 
   const handleCopy = async () => {
@@ -98,6 +117,66 @@ export default function WalletPage() {
           <span>ON-CHAIN REFRESH</span>
         </button>
       </div>
+
+      {/* GO-LIVE READINESS — the honest "am I ready?" checklist */}
+      {readiness && (
+        <Card className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <SectionLabel>GO-LIVE READINESS</SectionLabel>
+            <div className="flex items-center gap-2">
+              {[
+                { label: "SIMULATION", ok: readiness.capabilities.simulation },
+                { label: "SPOT LIVE", ok: readiness.capabilities.spotLive },
+                { label: "PERPS LIVE", ok: readiness.capabilities.perpsLive },
+              ].map((c) => (
+                <span key={c.label} className={clsx(
+                  "font-mono text-[9px] px-2 py-1 rounded-md border uppercase tracking-wider",
+                  c.ok ? "text-xr-mint border-xr-mint/40 bg-xr-mint/10" : "text-xr-text-faint border-xr-border bg-xr-bg"
+                )}>
+                  {c.ok ? "● " : "○ "}{c.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-xr-text-dim leading-relaxed">
+            Required steps {readiness.requiredReady} complete.{" "}
+            {readiness.readyForSpotLive
+              ? "✅ Ready for REAL on-chain spot trading — switch to LIVE in the header."
+              : "Fund the wallet below to enable REAL on-chain spot trading (no TWAK creds needed for spot)."}
+            {!readiness.readyForPerpsLive && " Perps additionally need the TWAK CLI + credentials."}
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {readiness.checks.map((c) => (
+              <div key={c.key} className="flex items-start gap-2 p-2 bg-xr-bg-elev-2/40 border border-xr-border rounded-md">
+                {c.ok ? (
+                  <CheckCircle2 className="h-4 w-4 text-xr-mint shrink-0 mt-0.5" />
+                ) : c.optional ? (
+                  <MinusCircle className="h-4 w-4 text-xr-warn shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-xr-loss shrink-0 mt-0.5" />
+                )}
+                <div className="flex flex-col min-w-0">
+                  <span className="font-mono text-[11px] text-xr-text">
+                    {c.label}{c.optional && !c.ok ? " (optional)" : ""}
+                  </span>
+                  <span className="font-mono text-[9px] text-xr-text-faint truncate">
+                    {c.ok ? c.detail : (c.fix || c.detail)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!readiness.checks.find((c) => c.key === "registered")?.ok && (
+            <Button variant="outline-mint" size="sm" onClick={handleRegister} disabled={registering}
+              className="w-full sm:w-auto">
+              {registering ? "REGISTERING…" : "REGISTER ON-CHAIN FOR COMPETITION"}
+            </Button>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Address, QR, and Warnings */}

@@ -59,6 +59,16 @@ export const xorrApi = {
       liqFeed: { started: boolean; connected: boolean; symbols_tracked: number; last_event_age_sec: number | null };
       t: string;
     }>("/api/health"),
+  getReadiness: () =>
+    request<{
+      mode: string;
+      fundableAddress: string | null;
+      capabilities: { spotLive: boolean; perpsLive: boolean; simulation: boolean };
+      requiredReady: string;
+      readyForSpotLive: boolean;
+      readyForPerpsLive: boolean;
+      checks: { key: string; label: string; ok: boolean; detail: string; optional: boolean; fix: string }[];
+    }>("/api/readiness"),
   getOverview: () => request<OverviewResponse>("/api/overview"),
   getTrades: (window: "all" | "competition" | "qualifier" = "all") =>
     request<Trade[]>(`/api/trades?window=${window}`),
