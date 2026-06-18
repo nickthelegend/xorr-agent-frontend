@@ -19,6 +19,7 @@ export default function OverviewPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [councilHealth, setCouncilHealth] = useState<{ primary: number; verifier: number; fast: number } | null>(null);
+  const [health, setHealth] = useState<Awaited<ReturnType<typeof xorrApi.getHealth>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,7 +27,7 @@ export default function OverviewPage() {
   const loadOverview = async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setRefreshing(true);
     try {
-      const [overviewRes, tradesRes, healthRes] = await Promise.all([
+      const [overviewRes, tradesRes, healthRes, sysHealthRes] = await Promise.all([
         xorrApi.getOverview(),
         xorrApi.getTrades("all").catch(e => {
           console.error("Trades fetch failed", e);
@@ -35,12 +36,14 @@ export default function OverviewPage() {
         xorrApi.getCouncilHealth().catch(e => {
           console.error("Council health fetch failed", e);
           return null;
-        })
+        }),
+        xorrApi.getHealth().catch(() => null),
       ]);
-      
+
       setData(overviewRes);
       setTrades(tradesRes);
       setCouncilHealth(healthRes);
+      setHealth(sysHealthRes);
       setError(null);
     } catch (err: any) {
       setError(err.message || "Failed to load overview data.");
@@ -264,6 +267,41 @@ export default function OverviewPage() {
           </div>
         </Card>
       </div>
+
+      {/* Live data feeds + engine liveness (real-time WS price, liquidation tape, watchdog) */}
+      <Card className="p-4">
+        <SectionLabel>LIVE FEEDS &amp; ENGINE</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          {[
+            {
+              name: "REAL-TIME PRICE FEED",
+              sub: "Binance WS · sub-second marks",
+              ok: !!health?.wsFeed?.connected,
+              detail: health?.wsFeed ? `${health.wsFeed.symbols ?? 0} symbols` : "—",
+            },
+            {
+              name: "LIQUIDATION FEED",
+              sub: "Binance forceOrder · cascade signals",
+              ok: !!health?.liqFeed?.connected,
+              detail: health?.liqFeed ? `${health.liqFeed.symbols_tracked ?? 0} tracked` : "—",
+            },
+            {
+              name: "ENGINE WATCHDOG",
+              sub: "self-healing scan + risk loops",
+              ok: !!health?.scheduler?.monitor_alive,
+              detail: health?.scheduler?.monitor_age_sec != null ? `tick ${health.scheduler.monitor_age_sec}s` : "idle",
+            },
+          ].map((f) => (
+            <div key={f.name} className="flex items-center space-x-2.5 p-2.5 bg-xr-bg-elev-2/50 border border-xr-border rounded-md">
+              <span className={clsx("h-2 w-2 rounded-full flex-shrink-0", f.ok ? "bg-xr-mint animate-pulse" : "bg-xr-text-faint")} />
+              <div className="flex flex-col min-w-0">
+                <span className="font-mono text-[10px] font-semibold text-xr-text uppercase tracking-wider truncate">{f.name}</span>
+                <span className="font-mono text-[9px] text-xr-text-faint truncate">{f.sub} · {f.detail}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {/* Row 3: Equity Chart + Fear & Greed */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

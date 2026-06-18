@@ -50,7 +50,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const xorrApi = {
-  getHealth: () => request<{ ok: boolean; ts: string }>("/api/health"),
+  getHealth: () =>
+    request<{
+      ok: boolean;
+      db: boolean;
+      scheduler: { running: boolean; scan_alive: boolean; monitor_alive: boolean; scan_age_sec: number | null; monitor_age_sec: number | null };
+      wsFeed: { started: boolean; connected: boolean; symbols: number; last_msg_age_sec: number | null };
+      liqFeed: { started: boolean; connected: boolean; symbols_tracked: number; last_event_age_sec: number | null };
+      t: string;
+    }>("/api/health"),
   getOverview: () => request<OverviewResponse>("/api/overview"),
   getTrades: (window: "all" | "competition" | "qualifier" = "all") =>
     request<Trade[]>(`/api/trades?window=${window}`),
