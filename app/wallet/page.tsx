@@ -164,6 +164,33 @@ export default function WalletPage() {
             )}
           </Card>
 
+          {/* Real on-chain self-custody wallet — fund this to go live */}
+          <Card className="space-y-3 border-xr-mint/30">
+            <div className="flex items-center justify-between">
+              <SectionLabel className="text-xr-mint">ON-CHAIN AGENT WALLET · FUND HERE</SectionLabel>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-xr-text-faint">
+                {wallet.onchain?.gasOk ? "LIVE-READY" : "NEEDS FUNDING"}
+              </span>
+            </div>
+            <p className="text-[11px] text-xr-text-dim leading-relaxed">
+              {wallet.simulation
+                ? "The balances on the right are the SIMULATED paper portfolio. The real self-custody wallet below holds actual funds — deposit BNB (gas) + USDT (trading) to this address, then switch to LIVE."
+                : "Real on-chain balances of the self-custody agent wallet, signing locally on BNB Chain."}
+            </p>
+            <div className="grid grid-cols-2 gap-3 font-mono">
+              <div className="bg-xr-bg border border-xr-border rounded-md px-3 py-2 flex flex-col">
+                <span className="text-[9px] uppercase tracking-wider text-xr-text-faint">BNB (gas)</span>
+                <span className="text-sm text-xr-text font-semibold">{wallet.onchain?.bnb?.toFixed(5) ?? "0.00000"}</span>
+                <span className="text-[10px] text-xr-text-dim">{formatMoney(wallet.onchain?.bnbUsd ?? 0)}</span>
+              </div>
+              <div className="bg-xr-bg border border-xr-border rounded-md px-3 py-2 flex flex-col">
+                <span className="text-[9px] uppercase tracking-wider text-xr-text-faint">USDT (trading)</span>
+                <span className="text-sm text-xr-text font-semibold">{(wallet.onchain?.usdt ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                <span className="text-[10px] text-xr-text-dim">{formatMoney(wallet.onchain?.usdt ?? 0)}</span>
+              </div>
+            </div>
+          </Card>
+
           {/* Gas Reserve Check */}
           <Card className={clsx("border", wallet.gasOk ? "border-xr-border" : "border-xr-loss/40 bg-xr-loss/5")}>
             <div className="flex items-start space-x-3">
@@ -206,9 +233,11 @@ export default function WalletPage() {
           <Card className="p-0 overflow-hidden h-full flex flex-col justify-between">
             <div>
               <div className="px-5 py-4 border-b border-xr-border">
-                <SectionLabel>ASSET BALANCE LEDGER</SectionLabel>
+                <SectionLabel>{wallet.simulation ? "SIMULATED PORTFOLIO (PAPER)" : "ASSET BALANCE LEDGER"}</SectionLabel>
                 <p className="text-[11px] font-sans text-xr-text-dim mt-1">
-                  On-chain assets indexed in the agent wallet. Whitelisted assets with balances are displayed.
+                  {wallet.simulation
+                    ? "Paper-trading portfolio used in simulation mode. The real fundable wallet is shown on the left."
+                    : "On-chain assets in the agent wallet. Whitelisted assets with balances are displayed."}
                 </p>
               </div>
 

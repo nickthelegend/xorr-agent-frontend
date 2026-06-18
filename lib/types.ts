@@ -55,20 +55,27 @@ export interface Trade {
   contract: string;                // checksummed address
   status: TradeStatus;
   invested: number;                // USDT in
-  pnlUsd: number;
+  pnlUsd: number;                  // live unrealized for open trades, realized for closed
   pnlPct: number;
   holdMinutes: number;
+  entryPrice: number | null;       // USD fill price at entry
+  exitPrice: number | null;        // USD fill price at exit (null while open)
+  markPrice: number | null;        // current mark (open) or exit price (closed)
+  unrealized: boolean;             // true while the position is open
   entryMarketCap: number | null;
   exitMarketCap: number | null;
   score: number;                   // brain score 0-100
   exitReason: ExitReason | null;
-  bundlerPct: number;              // 0 for spot
-  devPct: number;
-  snipers: number;
   window: "COMPETITION" | "QUALIFIER";
   txOpen: string;
   txClose: string | null;
   strategy: string;
+  // Perp fields (spot trades default to long / spot / 1x)
+  isPerp?: boolean;
+  venue?: "spot" | "perp";
+  direction?: "long" | "short";
+  leverage?: number;
+  liquidationPrice?: number;
 }
 
 export interface CouncilVote {
@@ -108,6 +115,14 @@ export interface WalletResponse {
   balances: { symbol: string; amount: number; usd: number; contract?: string; }[];
   gasOk: boolean;
   gasThresholdBnb: number;
+  simulation: boolean;             // true => balances above are the paper portfolio
+  onchain: {                       // the REAL self-custody wallet (fund this address)
+    address: string;
+    bnb: number;
+    bnbUsd: number;
+    usdt: number;
+    gasOk: boolean;
+  };
   qrPngBase64: string;             // address QR
 }
 

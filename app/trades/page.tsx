@@ -11,6 +11,15 @@ import { formatMoney, formatPercent, formatDuration, formatTime, formatAddress }
 import { Copy, Check, ExternalLink, Download, Search, RefreshCw } from "lucide-react";
 import clsx from "clsx";
 
+// Adaptive USD price formatter (handles $60,000 down to sub-cent token prices)
+function formatPrice(p: number | null | undefined): string {
+  if (p == null || !isFinite(p)) return "—";
+  if (p >= 1000) return `$${p.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  if (p >= 1) return `$${p.toFixed(4)}`;
+  if (p >= 0.01) return `$${p.toFixed(5)}`;
+  return `$${p.toPrecision(3)}`;
+}
+
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
@@ -222,6 +231,8 @@ export default function TradesPage() {
                 <th className="px-4 font-normal text-right">INVESTED</th>
                 <th className="px-4 font-normal text-right">PNL</th>
                 <th className="px-4 font-normal text-right">PNL %</th>
+                <th className="px-4 font-normal text-right">ENTRY</th>
+                <th className="px-4 font-normal text-right">MARK / EXIT</th>
                 <th className="px-4 font-normal text-right">HOLD</th>
                 <th className="px-4 font-normal text-right">ENTRY MC</th>
                 <th className="px-4 font-normal text-right">EXIT MC</th>
@@ -235,7 +246,7 @@ export default function TradesPage() {
             <tbody className="divide-y divide-xr-border/40 font-mono text-[11px]">
               {filteredTrades.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="text-center py-12 text-xr-text-faint italic">
+                  <td colSpan={16} className="text-center py-12 text-xr-text-faint italic">
                     No matching trades found in ledger.
                   </td>
                 </tr>
@@ -255,9 +266,24 @@ export default function TradesPage() {
                         {formatTime(t.openedAt)}
                       </td>
                       
-                      {/* SYMBOL */}
+                      {/* SYMBOL (+ perp direction/leverage badge) */}
                       <td className="px-4 font-semibold text-xr-text whitespace-nowrap">
-                        {t.symbol}
+                        <div className="flex items-center gap-1.5">
+                          <span>{t.symbol}</span>
+                          {t.isPerp && (
+                            <span
+                              className={clsx(
+                                "px-1.5 py-0.5 rounded-[3px] text-[8px] font-bold uppercase tracking-wider border",
+                                t.direction === "short"
+                                  ? "text-xr-loss border-xr-loss/40 bg-xr-loss/10"
+                                  : "text-xr-win border-xr-win/40 bg-xr-win/10"
+                              )}
+                              title={t.liquidationPrice ? `Liquidation ${formatPrice(t.liquidationPrice)}` : undefined}
+                            >
+                              {(t.direction ?? "long")} {t.leverage ? `${t.leverage}x` : ""}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       
                       {/* STATUS */}
@@ -282,30 +308,43 @@ export default function TradesPage() {
                         {formatMoney(t.invested)}
                       </td>
                       
-                      {/* PNL */}
+                      {/* PNL (live unrealized for open positions) */}
                       <td
                         className={clsx(
                           "px-4 text-right whitespace-nowrap font-medium",
-                          isWin && "text-xr-win",
-                          isLoss && "text-xr-loss",
-                          isOpen && "text-xr-text-dim"
+                          t.pnlUsd > 0 && "text-xr-win",
+                          t.pnlUsd < 0 && "text-xr-loss",
+                          t.pnlUsd === 0 && "text-xr-text-dim",
+                          isOpen && "italic"
                         )}
+                        title={isOpen ? "Unrealized (live mark)" : "Realized"}
                       >
-                        {isOpen ? "—" : `${t.pnlUsd > 0 ? "+" : ""}${formatMoney(t.pnlUsd)}`}
+                        {`${t.pnlUsd > 0 ? "+" : ""}${formatMoney(t.pnlUsd)}`}
                       </td>
-                      
+
                       {/* PNL % */}
                       <td
                         className={clsx(
                           "px-4 text-right whitespace-nowrap font-medium",
-                          isWin && "text-xr-win",
-                          isLoss && "text-xr-loss",
-                          isOpen && "text-xr-text-dim"
+                          t.pnlPct > 0 && "text-xr-win",
+                          t.pnlPct < 0 && "text-xr-loss",
+                          t.pnlPct === 0 && "text-xr-text-dim",
+                          isOpen && "italic"
                         )}
                       >
-                        {isOpen ? "—" : formatPercent(t.pnlPct)}
+                        {formatPercent(t.pnlPct)}
                       </td>
-                      
+
+                      {/* ENTRY PRICE */}
+                      <td className="px-4 text-right text-xr-text-dim whitespace-nowrap">
+                        {formatPrice(t.entryPrice)}
+                      </td>
+
+                      {/* MARK / EXIT PRICE */}
+                      <td className="px-4 text-right text-xr-text-dim whitespace-nowrap">
+                        {formatPrice(t.markPrice ?? t.exitPrice)}
+                      </td>
+
                       {/* HOLD */}
                       <td className="px-4 text-right text-xr-text-dim whitespace-nowrap">
                         {isOpen ? formatDuration(t.holdMinutes) : formatDuration(t.holdMinutes)}
