@@ -62,6 +62,8 @@ export const xorrApi = {
   getReadiness: () =>
     request<{
       mode: string;
+      tradingVenue?: string;
+      spotOnly?: boolean;
       fundableAddress: string | null;
       capabilities: { spotLive: boolean; perpsLive: boolean; simulation: boolean };
       requiredReady: string;

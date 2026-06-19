@@ -127,7 +127,8 @@ export default function WalletPage() {
               {[
                 { label: "SIMULATION", ok: readiness.capabilities.simulation },
                 { label: "SPOT LIVE", ok: readiness.capabilities.spotLive },
-                { label: "PERPS LIVE", ok: readiness.capabilities.perpsLive },
+                { label: readiness.spotOnly ? "SPOT-ONLY MODE" : "PERPS LIVE",
+                  ok: readiness.spotOnly ? true : readiness.capabilities.perpsLive },
               ].map((c) => (
                 <span key={c.label} className={clsx(
                   "font-mono text-[9px] px-2 py-1 rounded-md border uppercase tracking-wider",
@@ -144,7 +145,9 @@ export default function WalletPage() {
             {readiness.readyForSpotLive
               ? "✅ Ready for REAL on-chain spot trading — switch to LIVE in the header."
               : "Fund the wallet below to enable REAL on-chain spot trading (no TWAK creds needed for spot)."}
-            {!readiness.readyForPerpsLive && " Perps additionally need the TWAK CLI + credentials."}
+            {readiness.spotOnly
+              ? " Spot-only competition mode: perps are disabled — no leverage, no liquidation risk."
+              : (!readiness.readyForPerpsLive && " Perps additionally need the TWAK CLI + credentials.")}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
